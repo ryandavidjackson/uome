@@ -2,7 +2,6 @@
 <html lang="en">
   <!-- TODO -->
   <!-- Add 'paid' button to settle up -->
-  <!-- Add EUR -> GBP convertor -->
 
 <!-- HEADER -->
 <head>
@@ -360,7 +359,7 @@ function renderBalances() {
     }).join("");
     const settlements = simplifyDebts(balances);
     const settleRows = settlements.map((t) => `
-        <div class="settle-row">${esc(t.from)} <span class="arrow">→</span> ${esc(t.to)} <span class="settle-amt">${money(t.amount)}</span></div>
+        <div class="settle-row">${esc(t.from)} <span class="arrow">→</span> ${esc(t.to)} <span class="settle-amt">${money(t.amount)}</span><button class="pay-btn" onclick="">Pay up!</button></div>
     `).join("");
     return `
         <div class="section-title">Balances</div>
