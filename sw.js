@@ -1,7 +1,8 @@
-const CACHE_NAME = "ledger-co-v1";
+const CACHE_NAME = "uome-v1";
 const ASSETS = [
   "./",
   "./index.html",
+  "./style.css",
   "./manifest.json",
   "./icon-192.png",
   "./icon-512.png",
