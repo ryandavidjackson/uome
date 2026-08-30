@@ -10,6 +10,7 @@
     --darker-cream: #B7AD91; /* Settle up boxes */
     --input-box: #D8CFB8; /* Input boxes */
     --red: #A63D2F; /* Delete buttons */
+    --green: #58855f;
 }
 
 * { box-sizing: border-box; }
@@ -65,8 +66,10 @@ body { min-height: 100vh; background: var(--black); font-family: 'Inter', sans-s
 /* Individual rows */
 .settle-row{ display: flex; align-items: center; gap: 8px; font-family: 'IBM Plex Mono', monospace; font-size: 13.5px; padding: 8px 0; border-bottom: 1px dashed var(--dark-cream)}
 .settle-row:last-child { border-bottom: none; }
-.arrow { color: var(--light-grey); font-weight: 600; }
+.arrow { color: var(--grey); font-weight: 600; }
 .settle-amt { margin-left: auto; font-weight: 600; }
+.settle-pay { display: flex; margin-left: auto; gap: 8px; font-weight: 600; color: var(--white); background: var(--green); padding: 3px 3px; border-radius: 4px; }
+.pay-btn  { font-family: 'IBM Plex Mono', monospace; font-size: 12px; background: var(--green); color: var(--cream); border: none; padding: 3px 6px; border-radius: 3px; cursor: pointer; letter-spacing: 0.5px; }
 
 /* Empty state */
 .empty { text-align: center; color: var(--muted-grey); font-size: 13px; padding: 30px 10px; font-style: italic; }
@@ -86,6 +89,7 @@ body { min-height: 100vh; background: var(--black); font-family: 'Inter', sans-s
 
 /* Format input boxes */
 label.field { display: block; font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: #6B6355; font-family: 'IBM Plex Mono', monospace; margin: 14px 0 6px; }
+label.desc { display: block; font-size: 11px; font-style: italic; letter-spacing: 1px; color: #6B6355; font-family: 'IBM Plex Mono', monospace; margin: 14px 0 6px; }
 input[type=text], input[type=number], select { width: 100%; padding: 10px 12px; border: 1px solid var(--input-box); border-radius: 5px; background: var(--white); font-family: 'Inter', sans-serif; font-size: 14.5px; color: var(--black) }
 /* Format selection boxes e.g. for selecting who took part in a transaction */
 .chip-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
