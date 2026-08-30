@@ -1,113 +1,80 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<title>uome</title>
+  <!-- TODO -->
+  <!-- Add 'paid' button to settle up -->
+  <!-- Add EUR -> GBP convertor -->
+  <!-- Migrate style sheet -->
 
+<!-- HEADER -->
+<head>
+<!-- Use UTF-8 character encoding (standard) -->
+<meta charset="UTF-8" />
+<!-- Scale the size of the page according to screen size -->
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+
+<title>uome</title>
+<!-- Declare this an installable PWA -->
 <link rel="manifest" href="manifest.json" />
+<!-- Set browser theme colour, i.e. the colour of the surrounding UI, not the web page itself -->
 <meta name="theme-color" content="#121212" />
+<!-- Declare icons -->
 <link rel="icon" href="icon-192.png" />
 <link rel="apple-touch-icon" href="icon-192.png" />
+
+<!-- Configure iOS home screen icon behaviour -->
+<!-- Run in full-screen standalone -->
 <meta name="apple-mobile-web-app-capable" content="yes" />
+<!-- Configure status bar behaviour (the black status bar at the top of the screen) -->
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-<meta name="apple-mobile-web-app-title" content="Ledger" />
+<!-- Set the name of the app on the home screen -->
+<meta name="apple-mobile-web-app-title" content="uome" />
+<!-- General, non-iOS behaviour -->
 <meta name="mobile-web-app-capable" content="yes" />
 
+<!-- Load fancy font families (Fraunces, IBM Plex Mono, and Inter) -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,600;0,700;1,500&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
-<!-- Firebase (compat SDK — no build step needed) -->
+<!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 
-<style>
-  * { box-sizing: border-box; }
-  html, body { margin: 0; padding: 0; }
-  body { min-height: 100vh; background: #121212; font-family: 'Inter', sans-serif; color: #121212; }
-  .app { width: 100%; max-width: 480px; margin: 0 auto; min-height: 100vh; background: #F7F3E8; display: flex; flex-direction: column; position: relative; }
-  .stamp-header { background: #121212; padding: calc(18px + env(safe-area-inset-top)) 20px 18px; position: relative; flex-shrink: 0; }
-  .stamp-header::after { content: ''; position: absolute; left: 0; right: 0; bottom: -1px; height: 10px;
-    background: radial-gradient(circle at 8px 0, transparent 8px, #121212 8.5px) repeat-x; background-size: 16px 16px; }
-  .brand-row { display: flex; align-items: center; justify-content: space-between; }
-  .brand { font-family: 'Fraunces', serif; font-weight: 700; font-style: italic; color: #F7F3E8; font-size: 24px; margin: 0; }
-  .brand-sub { font-family: 'IBM Plex Mono', monospace; color: #E0E0E0; font-size: 10.5px; letter-spacing: 1.5px; text-transform: uppercase; margin-top: 4px; }
-  .sync-pill { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: #8FA69C; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); padding: 5px 10px; border-radius: 12px; cursor: pointer; white-space: nowrap; }
-  .sync-pill.live { color: #E0E0E0; border-color: #E0E0E0; }
-  .content { flex: 1; overflow-y: auto; padding: 22px 18px 100px;
-    background-image: repeating-linear-gradient(to bottom, transparent 0, transparent 38px, #E6DFCB 39px); }
-  .section-title { font-family: 'Fraunces', serif; font-size: 19px; font-weight: 600; margin: 0 0 14px; display: flex; align-items: center; justify-content: space-between; }
-  .add-btn { font-family: 'IBM Plex Mono', monospace; font-size: 12px; background: #212121; color: #F7F3E8; border: none; padding: 7px 12px; border-radius: 3px; cursor: pointer; letter-spacing: 0.5px; }
-  .expense-row { background: #FFFDF7; border: 1px solid #E6DFCB; border-left: 3px solid #212121; border-radius: 4px; padding: 12px 13px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
-  .expense-desc { font-weight: 600; font-size: 14.5px; margin: 0 0 4px; }
-  .expense-meta { font-size: 12px; color: #6B6355; font-family: 'IBM Plex Mono', monospace; }
-  .expense-amount { font-family: 'IBM Plex Mono', monospace; font-weight: 600; font-size: 15px; white-space: nowrap; }
-  .del-x { background: none; border: none; color: #A63D2F; font-size: 16px; cursor: pointer; line-height: 1; padding: 2px 4px; opacity: 0.55; }
-  .balance-card { display: flex; align-items: center; justify-content: space-between; background: #FFFDF7; border: 1px solid #E6DFCB; border-radius: 6px; padding: 13px 14px; margin-bottom: 10px; }
-  .avatar { width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #F7F3E8; font-weight: 600; font-size: 13px; font-family: 'Fraunces', serif; flex-shrink: 0; }
-  .who { display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 14.5px; }
-  .bal-amt { font-family: 'IBM Plex Mono', monospace; font-weight: 600; font-size: 14.5px; }
-  .pos { color: #212121; } .neg { color: #A63D2F; } .zero { color: #9A9280; }
-  .receipt { background: #FFFDF7; border: 1px dashed #B7AD91; border-radius: 4px; padding: 14px 16px; margin-top: 4px; }
-  .settle-row { display: flex; align-items: center; gap: 8px; font-family: 'IBM Plex Mono', monospace; font-size: 13.5px; padding: 8px 0; border-bottom: 1px dashed #E6DFCB; }
-  .settle-row:last-child { border-bottom: none; }
-  .arrow { color: #E0E0E0; font-weight: 600; }
-  .settle-amt { margin-left: auto; font-weight: 600; }
-  .empty { text-align: center; color: #9A9280; font-size: 13px; padding: 30px 10px; font-style: italic; }
-  .tabbar { position: fixed; bottom: 0; left: 0; right: 0; max-width: 480px; margin: 0 auto; background: #121212; display: flex; padding: 10px 8px calc(10px + env(safe-area-inset-bottom)); }
-  .tab-btn { flex: 1; background: none; border: none; cursor: pointer; padding: 8px 4px; color: #8FA69C; font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; letter-spacing: 1px; text-transform: uppercase; border-bottom: 2px solid transparent; }
-  .tab-btn.active { color: #F7F3E8; border-bottom-color: #E0E0E0; }
-  .modal-overlay { position: fixed; inset: 0; background: rgba(27,36,32,0.55); display: flex; align-items: flex-end; z-index: 10; }
-  .modal-overlay.center { align-items: center; padding: 20px; }
-  .modal { background: #F7F3E8; width: 100%; max-width: 480px; margin: 0 auto; border-radius: 20px 20px 0 0; padding: 20px 20px calc(20px + env(safe-area-inset-bottom)); max-height: 88vh; overflow-y: auto; }
-  .modal.card { border-radius: 16px; }
-  .modal h3 { font-family: 'Fraunces', serif; margin: 0 0 8px; font-size: 20px; }
-  .modal p.lead { font-size: 13.5px; color: #6B6355; margin: 0 0 18px; line-height: 1.5; }
-  label.field { display: block; font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: #6B6355; font-family: 'IBM Plex Mono', monospace; margin: 14px 0 6px; }
-  input[type=text], input[type=number], select { width: 100%; padding: 10px 12px; border: 1px solid #D8CFB8; border-radius: 5px; background: #FFFDF7; font-family: 'Inter', sans-serif; font-size: 14.5px; color: #121212; }
-  .chip-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
-  .chip { padding: 7px 12px; border-radius: 16px; border: 1px solid #D8CFB8; background: #FFFDF7; font-size: 13px; cursor: pointer; font-weight: 500; }
-  .chip.on { background: #212121; color: #F7F3E8; border-color: #212121; }
-  .modal-actions { display: flex; gap: 10px; margin-top: 22px; }
-  .btn-primary, .btn-ghost { flex: 1; padding: 12px; border-radius: 6px; font-weight: 600; font-size: 14px; cursor: pointer; border: none; font-family: 'Inter', sans-serif; }
-  .btn-primary { background: #212121; color: #F7F3E8; }
-  .btn-ghost { background: transparent; color: #6B6355; border: 1px solid #D8CFB8; }
-  .friend-row { display: flex; align-items: center; justify-content: space-between; background: #FFFDF7; border: 1px solid #E6DFCB; border-radius: 6px; padding: 11px 13px; margin-bottom: 9px; }
-  .add-friend-row { display: flex; gap: 8px; margin-bottom: 16px; }
-  .add-friend-row input { flex: 1; }
-  .code-display { font-family: 'IBM Plex Mono', monospace; font-size: 28px; font-weight: 600; letter-spacing: 4px; text-align: center; background: #FFFDF7; border: 1px dashed #B7AD91; border-radius: 6px; padding: 16px; margin: 14px 0; color: #212121; }
-  .or-divider { text-align: center; color: #9A9280; font-size: 11px; letter-spacing: 1px; text-transform: uppercase; font-family: 'IBM Plex Mono', monospace; margin: 20px 0; }
-  .gate-btn { width: 100%; padding: 13px; border-radius: 6px; font-weight: 600; font-size: 14.5px; cursor: pointer; border: none; margin-bottom: 10px; }
-  .gate-btn.primary { background: #212121; color: #F7F3E8; }
-  .gate-btn.outline { background: transparent; border: 1px solid #D8CFB8; color: #121212; }
-  .config-warning { background: #FCEFE9; border: 1px solid #E3B7A5; color: #7A3421; font-size: 12.5px; padding: 12px 14px; border-radius: 6px; margin-bottom: 16px; line-height: 1.5; }
-  .config-warning code { background: rgba(0,0,0,0.06); padding: 1px 4px; border-radius: 3px; }
-</style>
+<!-- Define the document style with classes. This controls e.g. backgrounds and allows for defining of custom objects. -->
+<link rel="stylesheet" href="style.css" />
 </head>
+
 <body>
+<!-- Place an app box -->
 <div class="app">
-  <div class="stamp-header">
-    <div class="brand-row">
-      <div>
-        <p class="brand">uome</p>
-        <div class="brand-sub" id="brandSub">expense tracker</div>
-      </div>
-      <button class="sync-pill" id="syncPill" onclick="openGroupInfo()">not synced</button>
+    <!-- Add header with branding and sync status -->
+    <div class="stamp-header">
+        <div class="brand-row">
+            <!-- branding -->
+            <div>
+            <p class="brand">uome</p>
+            <div class="brand-sub" id="brandSub">shared transactions</div>
+            </div>
+            <!-- sync status -->
+            <button class="sync-pill" id ="syncPill" onclick="openGroupInfo()">not synced</button>
+        </div>
     </div>
-  </div>
-  <div class="content" id="content"></div>
-  <div class="tabbar">
-    <button class="tab-btn" data-tab="ledger">Ledger</button>
-    <button class="tab-btn" data-tab="balances">Balances</button>
-    <button class="tab-btn" data-tab="friends">Friends</button>
-  </div>
+    <!-- Content -->
+    <div class="content" id="content"></div>
+    <!-- Tab bars -->
+    <div class="tabbar">
+        <button class="tab-btn" data-tab="transactions">Transactions</button>
+        <button class="tab-btn" data-tab="balances">Balances</button>
+        <button class="tab-btn" data-tab="friends">Friends</button>
+    </div>
 </div>
+<!-- Create a modal and welcome gate for scripts to latch onto -->
 <div id="modalRoot"></div>
 <div id="gateRoot"></div>
 
+<!-- JavaScript: The real engine of the web app -->
 <script>
 /* =========================================================
-   FIREBASE CONFIG — fill this in with your own project's config
+   FIREBASE CONFIG :
    (Firebase console → Project settings → your web app → Config)
    ========================================================= */
 const firebaseConfig = {
@@ -120,116 +87,141 @@ const firebaseConfig = {
 };
 const CONFIG_IS_PLACEHOLDER = firebaseConfig.apiKey === "YOUR_API_KEY";
 
-const LOCAL_GROUP_KEY = "ledgerco-group-id";
+// Initialise group ID
+const LOCAL_GROUP_KEY = "uome-group-id";
+// Colour palette for avatar backgrounds
+// Black, light grey, red, blue, brown 
 const PALETTE = ["#212121", "#E0E0E0", "#A63D2F", "#3D5A80", "#6B4226"];
-const hashColor = (name) => {
-  let h = 0;
-  for (let i = 0; i < name.length; i++) h = name.charCodeAt(i) + ((h << 5) - h);
-  return PALETTE[Math.abs(h) % PALETTE.length];
+// Convert a name into a colour based on character values (pseudo-random)
+const hashColour = (name) => {
+    let h = 0;
+    for (let i = 0; i < name.length; i++) {
+        h = name.charCodeAt(i) + ((h << 5) - h); // ((h << 5) - h ) = h*31
+    }
+    return PALETTE[Math.abs(h) % PALETTE.length];
 };
+// Round and format a number n as currency (postive definite)
 const money = (n) => `£${Math.abs(n).toFixed(2)}`;
-const uid = () => Math.random().toString(36).slice(2, 9);
-const genGroupCode = () => Math.random().toString(36).slice(2, 8).toUpperCase();
+// Generate pseudo-random user ID
+const uid = () => Math.random().toString(36).slice(2,9);
+// Generate a pseudo-random group code
+const genGroupCode = () => Math.random().toString(36).slice(2,8).toUpperCase();
+// HTML-escaping on input strings
 function esc(s) { const d = document.createElement("div"); d.textContent = s; return d.innerHTML; }
 
+// Initialise database, grab group ID from locals, unsubscription from Firebase
 let db = null;
 let groupId = localStorage.getItem(LOCAL_GROUP_KEY) || null;
 let unsubscribe = null;
 
+// Initial state
 let state = {
-  friends: ["You"],
-  expenses: [],
-  tab: "ledger",
-};
+    friends: ["John"],
+    transactions: [],
+    tab: "transactions",
+}
 
-// ---------- Firestore wiring ----------
+// --- FIREBASE CONNECTORS --- //
 function initFirebase() {
-  if (CONFIG_IS_PLACEHOLDER) return false;
-  try {
-    firebase.initializeApp(firebaseConfig);
-    db = firebase.firestore();
-    db.enablePersistence({ synchronizeTabs: true }).catch(() => {});
-    return true;
-  } catch (e) {
-    console.error("Firebase init failed", e);
-    return false;
-  }
-}
-
-function setSyncPill(mode) {
-  const pill = document.getElementById("syncPill");
-  if (mode === "live") { pill.textContent = groupId; pill.classList.add("live"); }
-  else if (mode === "connecting") { pill.textContent = "connecting…"; pill.classList.remove("live"); }
-  else { pill.textContent = "not synced"; pill.classList.remove("live"); }
-}
-
-function subscribeToGroup(id) {
-  if (unsubscribe) unsubscribe();
-  setSyncPill("connecting");
-  unsubscribe = db.collection("groups").doc(id).onSnapshot((doc) => {
-    if (doc.exists) {
-      const data = doc.data();
-      state.friends = data.friends || [];
-      state.expenses = data.expenses || [];
+    // Fail initialisation if config not setup
+    if (CONFIG_IS_PLACEHOLDER) return false;
+    try {
+        firebase.initializeApp(firebaseConfig);
+        db = firebase.firestore();
+        db.enablePersistence({ synchronizeTabs: true }).catch(() => {});
+        return true;
+    } catch (e) {
+        console.error("Firebase init failed! Caught:", e);
+        return false;
     }
-    setSyncPill("live");
-    render();
-  }, (err) => {
-    console.error("Sync error", err);
-    setSyncPill("not synced");
-  });
 }
 
+// Update sync pill
+function setSyncPill(mode) {
+    const pill = document.getElementById("syncPill");
+    if (mode === "live") { pill.textContent = groupId; pill.classList.add("live"); }
+    else if (mode === "connecting") { pill.textContent = "connecting…"; pill.classList.remove("live")}
+    else { pill.textContent = "not synced"; pill.classList.remove("live"); }
+}
+
+// Subscribe to a group by ID
+function subscribeToGroup(id) {
+    // Detach any old listeners
+    if (unsubscribe) unsubscribe();
+    setSyncPill("connecting");
+    // Grab data from Firebase database @ group ID
+    unsubscribe = db.collection("groups").doc(id).onSnapshot((doc) => {
+        if (doc.exists) {
+            const data = doc.data();
+            state.friends = data.friends || [];
+            state.transactions = data.transactions || [];
+        }
+        setSyncPill("live");
+        render();
+    }, (err) => {
+        console.error("Sync error! Caught", err);
+        setSyncPill("not synced");
+    })
+}
+
+// Push local changes to Firebase
 async function pushState() {
-  if (!db || !groupId) return;
-  await db.collection("groups").doc(groupId).set({
-    friends: state.friends,
-    expenses: state.expenses,
-    updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-  }, { merge: true });
+    if (!db || !groupId) return;
+    await db.collection("groups").doc(groupId).set({
+        friends: state.friends,
+        transactions: state.transactions,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+    }, { merge: true });
 }
 
+// Create a group with default field values
+// Makes group ID persistent and closes welcome message/gate
 async function createGroup() {
-  const id = genGroupCode();
-  await db.collection("groups").doc(id).set({
-    friends: ["You"],
-    expenses: [],
-    updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-  });
-  groupId = id;
-  localStorage.setItem(LOCAL_GROUP_KEY, id);
-  subscribeToGroup(id);
-  closeGate();
+    const id = genGroupCode();
+    await db.collection("groups").doc(id).set({
+        friends: ["John"],
+        transactions: [],
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+    });
+    groupId = id;
+    localStorage.setItem(LOCAL_GROUP_KEY, id);
+    subscribeToGroup(id);
+    closeGate();
 }
 
+// Join an existing group
 async function joinGroup(code) {
-  const id = code.trim().toUpperCase();
-  if (!id) return;
-  const docRef = db.collection("groups").doc(id);
-  const snap = await docRef.get();
-  if (!snap.exists) {
-    document.getElementById("joinError").textContent = "No group found with that code.";
-    return;
-  }
-  groupId = id;
-  localStorage.setItem(LOCAL_GROUP_KEY, id);
-  subscribeToGroup(id);
-  closeGate();
+    const id = code.trim().toUpperCase();
+    if (!id) return;
+    const docRef = db.collection("groups").doc(id);
+    const snap = await docRef.get();
+    if (!snap.exists) {
+        document.getElementById("joinError").textContent = "Group not found.";
+        return;
+    }
+    groupId = id;
+    localStorage.setItem(LOCAL_GROUP_KEY, id);
+    // Grab app data from group
+    subscribeToGroup(id);
+    closeGate();
 }
 
+// Leave active group
 function leaveGroup() {
-  if (unsubscribe) unsubscribe();
-  groupId = null;
-  localStorage.removeItem(LOCAL_GROUP_KEY);
-  state = { friends: ["You"], expenses: [], tab: "ledger" };
-  setSyncPill("not synced");
-  render();
-  showGate();
+    if (unsubscribe) unsubscribe();
+    groupId = null;
+    localStorage.removeItem(LOCAL_GROUP_KEY);
+    state = { friends: ["John"], transactions: [], tab: "transactions"};
+    setSyncPill("not synced");
+    render();
+    showGate();
 }
 
-// ---------- Gate (join/create screen) ----------
+// --- GATE HANDLING (WELCOME SCREEN) --- //
 function showGate() {
-  if (CONFIG_IS_PLACEHOLDER) {
+    // Hook onto the gateRoot element and insert a modal box with 
+    // group code input
+    if (CONFIG_IS_PLACEHOLDER) {
     document.getElementById("gateRoot").innerHTML = `
       <div class="modal-overlay center">
         <div class="modal card">
@@ -244,12 +236,12 @@ function showGate() {
         </div>
       </div>`;
     return;
-  }
-  document.getElementById("gateRoot").innerHTML = `
+    }
+    document.getElementById("gateRoot").innerHTML = `
     <div class="modal-overlay center">
       <div class="modal card">
-        <h3>Sync with your friends</h3>
-        <p class="lead">Create a group and share the code, or join a group someone already started.</p>
+        <h3>Synchronise transactions</h3>
+        <p class="lead">Create a group and share the code, or join an existing group.</p>
         <button class="gate-btn primary" onclick="createGroup()">Create a new group</button>
         <div class="or-divider">or</div>
         <input type="text" id="joinCodeInput" placeholder="Enter group code" style="text-transform:uppercase;text-align:center;letter-spacing:2px;font-family:'IBM Plex Mono',monospace;" />
@@ -260,6 +252,7 @@ function showGate() {
 }
 function closeGate() { document.getElementById("gateRoot").innerHTML = ""; }
 
+// Expand group code or leave current group
 function openGroupInfo() {
   if (!groupId) { showGate(); return; }
   document.getElementById("modalRoot").innerHTML = `
@@ -276,179 +269,201 @@ function openGroupInfo() {
     </div>`;
 }
 
-// ---------- Business logic ----------
+// ---  ACCOUNTING --- //
 function computeBalances() {
-  const bal = Object.fromEntries(state.friends.map((f) => [f, 0]));
-  state.expenses.forEach((e) => {
-    const share = e.amount / e.split.length;
-    e.split.forEach((p) => { if (bal[p] !== undefined) bal[p] -= share; });
-    if (bal[e.paidBy] !== undefined) bal[e.paidBy] += e.amount;
-  });
-  return bal;
+    // Initialise a lookup with friend name and balance
+    const bal = Object.fromEntries(state.friends.map((f) => [f, 0]));
+    // Loop through transactions
+    state.transactions.forEach((e) => {
+        // Calculate the share for each transactions, i.e. transaction / no. of sharers
+        const share = e.amount / e.split.length;
+        // Subtract the share from every sharers balance
+        e.split.forEach((p) => {
+            if (bal[p] !== undefined ) bal[p] -= share;
+        });
+        // Add the total transaction to the payer
+        // The net effect is that they are owed everything but their own share
+        if (bal[e.paidBy] !== undefined ) bal[e.paidBy] += e.amount;
+    });
+    return bal
 }
 
+// Organise friends by debtors and creditors, with balances
+// Recommend settle up transactions
 function simplifyDebts(balances) {
-  const creditors = [], debtors = [];
-  Object.entries(balances).forEach(([name, amt]) => {
-    if (amt > 0.01) creditors.push({ name, amt });
-    else if (amt < -0.01) debtors.push({ name, amt: -amt });
-  });
-  creditors.sort((a, b) => b.amt - a.amt);
-  debtors.sort((a, b) => b.amt - a.amt);
-  const txns = [];
-  let i = 0, j = 0;
-  while (i < debtors.length && j < creditors.length) {
-    const pay = Math.min(debtors[i].amt, creditors[j].amt);
-    txns.push({ from: debtors[i].name, to: creditors[j].name, amount: pay });
-    debtors[i].amt -= pay; creditors[j].amt -= pay;
-    if (debtors[i].amt < 0.01) i++;
-    if (creditors[j].amt < 0.01) j++;
-  }
-  return txns;
+    const creditors = [], debtors = [];
+    // Loop over (name, amt) pairs in balances lookup table
+    Object.entries(balances).forEach(([name, amt]) => {
+        if (amt > 0.01) creditors.push({ name, amt });
+        else if (amt < -0.01) debtors.push({ name, amt: -amt});
+    });
+    // Sort in descending order
+    creditors.sort((a, b) => b.amt - a.amt);
+    debtors.sort((a, b) => b.amt - a.amt);
+    const txns = [];
+    let i = 0, j = 0;
+    // Calculate individual settle up transactions
+    while (i < debtors.length && j < creditors.length) {
+        const pay = Math.min(debtors[i].amt, creditors[j].amt);
+        txns.push({ from: debtors[i].name, to: creditors[j].name, amount: pay});
+        debtors[i].amt -= pay; creditors[j].amt -= pay;
+        if (debtors[i].amt < 0.01) i++;
+        if (creditors[j].amt < 0.01) j++;
+    }
+    return txns;
 }
 
-// ---------- Rendering ----------
-function renderLedger() {
-  const rows = state.expenses.map((e) => `
-    <div class="expense-row">
-      <div>
-        <p class="expense-desc">${esc(e.desc)}</p>
-        <div class="expense-meta">${esc(e.paidBy)} paid · split ${e.split.length} ways</div>
-      </div>
-      <div style="display:flex;align-items:center;gap:6px;">
-        <span class="expense-amount">${money(e.amount)}</span>
-        <button class="del-x" onclick="removeExpense('${e.id}')" aria-label="Delete expense">✕</button>
-      </div>
-    </div>`).join("");
-  return `
-    <div class="section-title">Expenses <button class="add-btn" onclick="openAddModal()">+ Add</button></div>
-    ${state.expenses.length === 0 ? '<div class="empty">Nothing lost, nothing gained</div>' : rows}
-  `;
-}
-
-function renderBalances() {
-  const balances = computeBalances();
-  const cards = state.friends.map((f) => {
-    const b = balances[f] || 0;
-    const cls = b > 0.01 ? "pos" : b < -0.01 ? "neg" : "zero";
-    const label = b > 0.01 ? `is owed ${money(b)}` : b < -0.01 ? `owes ${money(b)}` : "settled up";
+// --- RENDERING --- //
+// Render transactions as rows
+function renderTransactions() {
+    const rows = state.transactions.map((e) => `
+        <div class="transaction-row">
+        <div>
+            <p class="transaction-desc">${esc(e.desc)}</p>
+            <div class="transaction-meta">${esc(e.paidBy)} paid · split ${e.split.length} ways</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;">
+            <span class="transaction-amount">${money(e.amount)}</span>
+            <button class="del-x" onclick="removeTransaction('${e.id}')" aria-label="Delete transaction">✕</button>
+        </div>
+        </div>`).join("");
     return `
-      <div class="balance-card">
-        <div class="who"><div class="avatar" style="background:${hashColor(f)}">${esc(f.slice(0,2).toUpperCase())}</div>${esc(f)}</div>
-        <div class="bal-amt ${cls}">${label}</div>
-      </div>`;
-  }).join("");
-  const settlements = simplifyDebts(balances);
-  const settleRows = settlements.map((t) => `
-      <div class="settle-row">${esc(t.from)} <span class="arrow">→</span> ${esc(t.to)} <span class="settle-amt">${money(t.amount)}</span></div>
-  `).join("");
-  return `
-    <div class="section-title">Balances</div>
-    ${cards}
-    <div class="section-title" style="margin-top:22px;">Settle up</div>
-    <div class="receipt">${settlements.length === 0 ? "<div class=\"empty\">Everyone's even — nothing to settle.</div>" : settleRows}</div>
-  `;
+        <div class="section-title">Transactions <button class="add-btn" onclick="openAddModal()">+ Add</button></div>
+        ${state.transactions.length === 0 ? '<div class="empty">No transactions yet.</div>' : rows}
+    `;
 }
 
+// Render transactions and settle ups
+function renderBalances() {
+    const balances = computeBalances();
+    const cards = state.friends.map((f) => {
+        const b = balances[f] || 0;
+        const cls = b > 0.01 ? "pos" : b < -0.01 ? "neg" : "zero";
+        const label = b > 0.01 ? `is owed ${money(b)}` : b < -0.01 ? `owes ${money(b)}` : "settled up";
+        return `
+        <div class="balance-card">
+            <div class="who"><div class="avatar" style="background:${hashColour(f)}">${esc(f.slice(0,2).toUpperCase())}</div>${esc(f)}</div>
+            <div class="bal-amt ${cls}">${label}</div>
+        </div>`;
+    }).join("");
+    const settlements = simplifyDebts(balances);
+    const settleRows = settlements.map((t) => `
+        <div class="settle-row">${esc(t.from)} <span class="arrow">→</span> ${esc(t.to)} <span class="settle-amt">${money(t.amount)}</span></div>
+    `).join("");
+    return `
+        <div class="section-title">Balances</div>
+        ${cards}
+        <div class="section-title" style="margin-top:22px;">Settle up</div>
+        <div class="receipt">${settlements.length === 0 ? "<div class=\"empty\">Everyone's even — nothing to settle.</div>" : settleRows}</div>
+    `;
+}
+
+// Render friends
 function renderFriends() {
-  const rows = state.friends.map((f) => `
-    <div class="friend-row">
-      <div class="who"><div class="avatar" style="background:${hashColor(f)}">${esc(f.slice(0,2).toUpperCase())}</div>${esc(f)}</div>
-      <button class="del-x" onclick="removeFriend('${esc(f)}')" aria-label="Remove friend">✕</button>
-    </div>`).join("");
-  return `
-    <div class="section-title">Friends</div>
-    <div class="add-friend-row">
-      <input type="text" id="newFriendInput" placeholder="Add a friend's name" onkeydown="if(event.key==='Enter') addFriend()" />
-      <button class="add-btn" onclick="addFriend()">Add</button>
-    </div>
-    ${rows}
-  `;
+    const rows = state.friends.map((f) => `
+        <div class="friend-row">
+        <div class="who"><div class="avatar" style="background:${hashColour(f)}">${esc(f.slice(0,2).toUpperCase())}</div>${esc(f)}</div>
+        <button class="del-x" onclick="removeFriend('${esc(f)}')" aria-label="Remove friend">✕</button>
+        </div>`).join("");
+    return `
+        <div class="section-title">Friends</div>
+        <div class="add-friend-row">
+        <input type="text" id="newFriendInput" placeholder="Add a friend's name" onkeydown="if(event.key==='Enter') addFriend()" />
+        <button class="add-btn" onclick="addFriend()">Add</button>
+        </div>
+        ${rows}
+    `;
 }
 
+// Render app content based on tab state
 function render() {
-  document.getElementById("brandSub").textContent = `shared expenses · ${state.friends.length} friends`;
-  const content = document.getElementById("content");
-  if (state.tab === "ledger") content.innerHTML = renderLedger();
-  else if (state.tab === "balances") content.innerHTML = renderBalances();
-  else content.innerHTML = renderFriends();
-  document.querySelectorAll(".tab-btn").forEach((btn) => btn.classList.toggle("active", btn.dataset.tab === state.tab));
+    document.getElementById("brandSub").textContent = `shared transactions · ${state.friends.length} friends`;
+    const content = document.getElementById("content");
+    if (state.tab === "transactions") content.innerHTML = renderTransactions();
+    else if (state.tab === "balances") content.innerHTML = renderBalances();
+    else content.innerHTML = renderFriends();
+    document.querySelectorAll(".tab-btn").forEach((btn) => btn.classList.toggle("active", btn.dataset.tab === state.tab));
 }
 
+// Listen for clicks to tab buttons and re-render content
 document.querySelectorAll(".tab-btn").forEach((btn) => {
-  btn.addEventListener("click", () => { state.tab = btn.dataset.tab; render(); });
+     btn.addEventListener("click", () => { state.tab = btn.dataset.tab; render(); });
 });
 
-// ---------- Mutations (write straight to Firestore; onSnapshot re-renders) ----------
-function removeExpense(id) {
-  state.expenses = state.expenses.filter((e) => e.id !== id);
-  db ? pushState() : render();
+// --- REWRITE FIRESTORE AND RE-RENDER --- //
+function removeTransaction(id) {
+    state.transactions = state.transactions.filter((e) => e.id !== id);
+    db ? pushState() : render();
 }
+
 function addFriend() {
-  const input = document.getElementById("newFriendInput");
-  const n = input.value.trim();
-  if (!n || state.friends.includes(n)) return;
-  state.friends.push(n);
-  db ? pushState() : render();
+    const input = document.getElementById("newFriendInput");
+    const n = input.value.trim();
+    if (!n || state.friends.includes(n)) return;
+    state.friends.push(n);
+    db ? pushState() : render();
 }
 function removeFriend(name) {
-  state.friends = state.friends.filter((x) => x !== name);
-  state.expenses = state.expenses.filter((e) => e.paidBy !== name && !e.split.includes(name));
-  db ? pushState() : render();
+    state.friends = state.friends.filter((x) => x !== name);
+    state.transactions = state.transactions.filter((e) => e.paidBy !== name && !e.split.includes(name));
+    db ? pushState() : render();
 }
 
+// Adding transactions
 let formState = { desc: "", amount: "", paidBy: "", split: [] };
 function openAddModal() {
-  formState = { desc: "", amount: "", paidBy: state.friends[0] || "", split: [...state.friends] };
-  renderModal();
+    formState = { desc: "", amount: "", paidBy: state.friends[0] || "", split: [...state.friends] };
+    renderModal();
 }
 function closeModal() { document.getElementById("modalRoot").innerHTML = ""; }
+// Toggle splitters
 function toggleSplit(name) {
-  formState.split = formState.split.includes(name) ? formState.split.filter((n) => n !== name) : [...formState.split, name];
-  renderModal(true);
+    formState.split = formState.split.includes(name) ? formState.split.filter((n) => n !== name) : [...formState.split, name];
+    renderModal(true);
 }
-function submitExpense() {
-  const desc = document.getElementById("descInput").value.trim();
-  const amount = parseFloat(document.getElementById("amountInput").value);
-  const paidBy = document.getElementById("paidBySelect").value;
-  if (!desc || !amount || amount <= 0 || formState.split.length === 0) return;
-  state.expenses.unshift({ id: uid(), desc, amount, paidBy, split: formState.split });
-  closeModal();
-  db ? pushState() : render();
+// Get transaction input
+function submitTransaction() {
+    const desc = document.getElementById("descInput").value.trim();
+    const amount = parseFloat(document.getElementById("amountInput").value);
+    const paidBy = document.getElementById("paidBySelect").value;
+    if (!desc || !amount || amount <= 0 || formState.split.length === 0) return;
+    state.transactions.unshift({ id: uid(), desc, amount, paidBy, split: formState.split });
+    closeModal();
+    db ? pushState() : render();
 }
 function renderModal(preserveInputs) {
-  const desc = preserveInputs ? document.getElementById("descInput").value : formState.desc;
-  const amount = preserveInputs ? document.getElementById("amountInput").value : formState.amount;
-  const paidBy = preserveInputs ? document.getElementById("paidBySelect").value : formState.paidBy;
-  const chips = state.friends.map((f) => `<button type="button" class="chip ${formState.split.includes(f) ? "on" : ""}" onclick="toggleSplit('${esc(f)}')">${esc(f)}</button>`).join("");
-  const options = state.friends.map((f) => `<option value="${esc(f)}" ${f === paidBy ? "selected" : ""}>${esc(f)}</option>`).join("");
-  document.getElementById("modalRoot").innerHTML = `
-    <div class="modal-overlay" onclick="if(event.target===this) closeModal()">
-      <div class="modal">
-        <h3>New expense</h3>
-        <label class="field">Description</label>
-        <input type="text" id="descInput" placeholder="e.g. Dinner at the pub" value="${esc(desc)}" />
-        <label class="field">Amount</label>
-        <input type="number" id="amountInput" placeholder="0.00" value="${esc(amount)}" />
-        <label class="field">Paid by</label>
-        <select id="paidBySelect">${options}</select>
-        <label class="field">Split among</label>
-        <div class="chip-row">${chips}</div>
-        <div class="modal-actions">
-          <button class="btn-ghost" onclick="closeModal()">Cancel</button>
-          <button class="btn-primary" onclick="submitExpense()">Save expense</button>
+    const desc = preserveInputs ? document.getElementById("descInput").value : formState.desc;
+    const amount = preserveInputs ? document.getElementById("amountInput").value : formState.amount;
+    const paidBy = preserveInputs ? document.getElementById("paidBySelect").value : formState.paidBy;
+    const chips = state.friends.map((f) => `<button type="button" class="chip ${formState.split.includes(f) ? "on" : ""}" onclick="toggleSplit('${esc(f)}')">${esc(f)}</button>`).join("");
+    const options = state.friends.map((f) => `<option value="${esc(f)}" ${f === paidBy ? "selected" : ""}>${esc(f)}</option>`).join("");
+    document.getElementById("modalRoot").innerHTML = `
+        <div class="modal-overlay" onclick="if(event.target===this) closeModal()">
+        <div class="modal">
+            <h3>New transaction</h3>
+            <label class="field">Description</label>
+            <input type="text" id="descInput" placeholder="e.g. Taxi home" value="${esc(desc)}" />
+            <label class="field">Amount</label>
+            <input type="number" id="amountInput" placeholder="0.00" value="${esc(amount)}" />
+            <label class="field">Paid by</label>
+            <select id="paidBySelect">${options}</select>
+            <label class="field">Split among</label>
+            <div class="chip-row">${chips}</div>
+            <div class="modal-actions">
+            <button class="btn-ghost" onclick="closeModal()">Cancel</button>
+            <button class="btn-primary" onclick="submitTransaction()">Save transaction</button>
+            </div>
         </div>
-      </div>
-    </div>`;
+        </div>`;
 }
 
-// ---------- Boot ----------
+// --- BOOT --- //
 render();
 const hasFirebase = initFirebase();
 if (hasFirebase && groupId) {
-  subscribeToGroup(groupId);
+    subscribeToGroup(groupId);
 } else {
-  showGate();
+    showGate();
 }
 
 if ("serviceWorker" in navigator) {
