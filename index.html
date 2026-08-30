@@ -3,7 +3,6 @@
   <!-- TODO -->
   <!-- Add 'paid' button to settle up -->
   <!-- Add EUR -> GBP convertor -->
-  <!-- Migrate style sheet -->
 
 <!-- HEADER -->
 <head>
@@ -119,6 +118,10 @@ let state = {
     friends: ["John"],
     transactions: [],
     tab: "transactions",
+}
+
+let currencies = {
+    name: ["GBP", "EUR"]
 }
 
 // --- FIREBASE CONNECTORS --- //
@@ -270,6 +273,15 @@ function openGroupInfo() {
 }
 
 // ---  ACCOUNTING --- //
+// Grab currency conversion rate
+async function getRate(from, to) {
+  if (from === to) return 1;
+  const res = await fetch(`https://api.frankfurter.dev/v2/rate/${from}/${to}`);
+  const data = await res.json();
+  console.log(data)
+  return data.rate
+}
+
 function computeBalances() {
     // Initialise a lookup with friend name and balance
     const bal = Object.fromEntries(state.friends.map((f) => [f, 0]));
@@ -410,10 +422,29 @@ function removeFriend(name) {
 }
 
 // Adding transactions
-let formState = { desc: "", amount: "", paidBy: "", split: [] };
-function openAddModal() {
-    formState = { desc: "", amount: "", paidBy: state.friends[0] || "", split: [...state.friends] };
+let formState = { desc: "", amount: "", paidBy: "", split: [], currency: "", rate: null };
+async function openAddModal() {
+    formState = { desc: "", amount: "", paidBy: state.friends[0] || "", split: [...state.friends], currency: "GBP", rate: null };
     renderModal();
+
+    // fetch currency rates
+    const currency = document.getElementById("currencySelect")?.value || "GBP";
+    formState.rate = await getRate(currency, "GBP");
+    renderModal(true);
+}
+async function updateCurrency() {
+    const currency = document.getElementById("currencySelect").value;
+    formState.currency = currency;
+    formState.rate = null; // fetch whilst changing
+    renderModal(true);
+
+    try {
+        formState.rate = await getRate(currency, "GBP")
+    } catch (err) {
+        console.error(err);
+        formState.rate = "error";
+    }
+    renderModal(true);
 }
 function closeModal() { document.getElementById("modalRoot").innerHTML = ""; }
 // Toggle splitters
@@ -425,18 +456,23 @@ function toggleSplit(name) {
 function submitTransaction() {
     const desc = document.getElementById("descInput").value.trim();
     const amount = parseFloat(document.getElementById("amountInput").value);
+    const currency = document.getElementById("currencySelect").value.trim();
     const paidBy = document.getElementById("paidBySelect").value;
-    if (!desc || !amount || amount <= 0 || formState.split.length === 0) return;
-    state.transactions.unshift({ id: uid(), desc, amount, paidBy, split: formState.split });
+    const rate = formState.rate;
+    if (!desc || !amount || amount <= 0 || (formState.split.length === 0) || (!formState.rate)) return;
+    gbp_amount = amount * formState.rate;
+    state.transactions.unshift({ id: uid(), desc, amount: gbp_amount, paidBy, split: formState.split, currency, rate });
     closeModal();
     db ? pushState() : render();
 }
 function renderModal(preserveInputs) {
     const desc = preserveInputs ? document.getElementById("descInput").value : formState.desc;
     const amount = preserveInputs ? document.getElementById("amountInput").value : formState.amount;
+    const currency = preserveInputs ? document.getElementById("currencySelect").value : formState.currency;
     const paidBy = preserveInputs ? document.getElementById("paidBySelect").value : formState.paidBy;
     const chips = state.friends.map((f) => `<button type="button" class="chip ${formState.split.includes(f) ? "on" : ""}" onclick="toggleSplit('${esc(f)}')">${esc(f)}</button>`).join("");
-    const options = state.friends.map((f) => `<option value="${esc(f)}" ${f === paidBy ? "selected" : ""}>${esc(f)}</option>`).join("");
+    const paidByOptions = state.friends.map((f) => `<option value="${esc(f)}" ${f === paidBy ? "selected" : ""}>${esc(f)}</option>`).join("");
+    const currencyOptions = currencies.name.map((n) => `<option value="${esc(n)}" ${n === currency ? "selected" : ""}>${esc(n)}</option>`).join("");
     document.getElementById("modalRoot").innerHTML = `
         <div class="modal-overlay" onclick="if(event.target===this) closeModal()">
         <div class="modal">
@@ -445,8 +481,11 @@ function renderModal(preserveInputs) {
             <input type="text" id="descInput" placeholder="e.g. Taxi home" value="${esc(desc)}" />
             <label class="field">Amount</label>
             <input type="number" id="amountInput" placeholder="0.00" value="${esc(amount)}" />
+            <label class="field">Currency</label>
+            <select id="currencySelect" onchange="updateCurrency()">${currencyOptions}</select>
+            <label class="desc">Conversion rate: £${formState.rate ?? "fetching..."}</label>
             <label class="field">Paid by</label>
-            <select id="paidBySelect">${options}</select>
+            <select id="paidBySelect">${paidByOptions}</select>
             <label class="field">Split among</label>
             <div class="chip-row">${chips}</div>
             <div class="modal-actions">
