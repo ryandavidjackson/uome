@@ -359,7 +359,7 @@ function renderBalances() {
     }).join("");
     const settlements = simplifyDebts(balances);
     const settleRows = settlements.map((t) => `
-        <div class="settle-row">${esc(t.from)} <span class="arrow">→</span> ${esc(t.to)} <span class="settle-amt">${money(t.amount)}</span><button class="pay-btn" onclick="">Pay up!</button></div>
+        <div class="settle-row">${esc(t.from)} <span class="arrow">→</span> ${esc(t.to)} <span class="settle-amt">${money(t.amount)}</span><button class="pay-btn" onclick="openAddModal(true,['${esc(t.from).replace(/'/g, "\\'")}', '${esc(t.to).replace(/'/g, "\\'")}'],${t.amount.toFixed(2)})">Pay up!</button></div>
     `).join("");
     return `
         <div class="section-title">Balances</div>
@@ -422,20 +422,25 @@ function removeFriend(name) {
 
 // Adding transactions
 let formState = { desc: "", amount: "", paidBy: "", split: [], currency: "", rate: null };
-async function openAddModal() {
-    formState = { desc: "", amount: "", paidBy: state.friends[0] || "", split: [...state.friends], currency: "GBP", rate: null };
-    renderModal();
+async function openAddModal(isPayment = false, paymentAgents = [], recAmount = null) {
+    amount = recAmount ? recAmount : ""
+    if (paymentAgents.length === 0) {
+        formState = { desc: "", amount, paidBy: state.friends[0] || "", split: [...state.friends], currency: "GBP", rate: null };
+    } else {
+        formState = { desc: "Payment", amount, paidBy: paymentAgents[0] || "", paidTo: paymentAgents[1] || "", split: [...state.friends], currency: "GBP", rate: null };
+    }
+    renderModal(false,isPayment);
 
     // fetch currency rates
     const currency = document.getElementById("currencySelect")?.value || "GBP";
     formState.rate = await getRate(currency, "GBP");
-    renderModal(true);
+    renderModal(true,isPayment);
 }
-async function updateCurrency() {
+async function updateCurrency(isPayment = false) {
     const currency = document.getElementById("currencySelect").value;
     formState.currency = currency;
     formState.rate = null; // fetch whilst changing
-    renderModal(true);
+    renderModal(true,isPayment);
 
     try {
         formState.rate = await getRate(currency, "GBP")
@@ -443,7 +448,7 @@ async function updateCurrency() {
         console.error(err);
         formState.rate = "error";
     }
-    renderModal(true);
+    renderModal(true,isPayment);
 }
 function closeModal() { document.getElementById("modalRoot").innerHTML = ""; }
 // Toggle splitters
@@ -452,19 +457,24 @@ function toggleSplit(name) {
     renderModal(true);
 }
 // Get transaction input
-function submitTransaction() {
+function submitTransaction(isPayment = false) {
     const desc = document.getElementById("descInput").value.trim();
     const amount = parseFloat(document.getElementById("amountInput").value);
     const currency = document.getElementById("currencySelect").value.trim();
     const paidBy = document.getElementById("paidBySelect").value;
     const rate = formState.rate;
-    if (!desc || !amount || amount <= 0 || (formState.split.length === 0) || (!formState.rate)) return;
+    if (!isPayment) {
+        split = formState.split;
+    } else {
+        split = [document.getElementById("paidToSelect").value];
+    }
+    if (!desc || !amount || amount <= 0 || (split.length === 0) || (!formState.rate)) return;
     gbp_amount = amount * formState.rate;
-    state.transactions.unshift({ id: uid(), desc, amount: gbp_amount, paidBy, split: formState.split, currency, rate });
+    state.transactions.unshift({ id: uid(), desc, amount: gbp_amount, paidBy, split, currency, rate });
     closeModal();
     db ? pushState() : render();
 }
-function renderModal(preserveInputs) {
+function renderModal(preserveInputs, isPayment=false) {
     const desc = preserveInputs ? document.getElementById("descInput").value : formState.desc;
     const amount = preserveInputs ? document.getElementById("amountInput").value : formState.amount;
     const currency = preserveInputs ? document.getElementById("currencySelect").value : formState.currency;
@@ -472,27 +482,54 @@ function renderModal(preserveInputs) {
     const chips = state.friends.map((f) => `<button type="button" class="chip ${formState.split.includes(f) ? "on" : ""}" onclick="toggleSplit('${esc(f)}')">${esc(f)}</button>`).join("");
     const paidByOptions = state.friends.map((f) => `<option value="${esc(f)}" ${f === paidBy ? "selected" : ""}>${esc(f)}</option>`).join("");
     const currencyOptions = currencies.name.map((n) => `<option value="${esc(n)}" ${n === currency ? "selected" : ""}>${esc(n)}</option>`).join("");
-    document.getElementById("modalRoot").innerHTML = `
+    if (!isPayment) {
+        document.getElementById("modalRoot").innerHTML = `
+            <div class="modal-overlay" onclick="if(event.target===this) closeModal()">
+            <div class="modal">
+                <h3>New transaction</h3>
+                <label class="field">Description</label>
+                <input type="text" id="descInput" placeholder="e.g. Taxi home" value="${esc(desc)}" />
+                <label class="field">Amount</label>
+                <input type="number" id="amountInput" placeholder="0.00" value="${esc(amount)}" />
+                <label class="field">Currency</label>
+                <select id="currencySelect" onchange="updateCurrency()">${currencyOptions}</select>
+                <label class="desc">Conversion rate: £${formState.rate ?? "fetching..."}</label>
+                <label class="field">Paid by</label>
+                <select id="paidBySelect">${paidByOptions}</select>
+                <label class="field">Split among</label>
+                <div class="chip-row">${chips}</div>
+                <div class="modal-actions">
+                <button class="btn-ghost" onclick="closeModal()">Cancel</button>
+                <button class="btn-primary" onclick="submitTransaction()">Save transaction</button>
+                </div>
+            </div>
+            </div>`;
+    }
+    // Payment mode: restricts to one-to-one transactions
+    else {
+        const paidTo = preserveInputs ? document.getElementById("paidToSelect").value : formState.paidTo;
+        const paidToOptions = state.friends.map((f) => `<option value="${esc(f)}" ${f === paidTo ? "selected" : ""}>${esc(f)}</option>`).join("");
+        document.getElementById("modalRoot").innerHTML = `
         <div class="modal-overlay" onclick="if(event.target===this) closeModal()">
         <div class="modal">
-            <h3>New transaction</h3>
+            <h3>Record a payment</h3>
             <label class="field">Description</label>
             <input type="text" id="descInput" placeholder="e.g. Taxi home" value="${esc(desc)}" />
             <label class="field">Amount</label>
             <input type="number" id="amountInput" placeholder="0.00" value="${esc(amount)}" />
             <label class="field">Currency</label>
-            <select id="currencySelect" onchange="updateCurrency()">${currencyOptions}</select>
+            <select id="currencySelect" onchange="updateCurrency(true)">${currencyOptions}</select>
             <label class="desc">Conversion rate: £${formState.rate ?? "fetching..."}</label>
             <label class="field">Paid by</label>
             <select id="paidBySelect">${paidByOptions}</select>
-            <label class="field">Split among</label>
-            <div class="chip-row">${chips}</div>
-            <div class="modal-actions">
+            <label class="field">Paid to</label>
+            <select id="paidToSelect">${paidToOptions}</select>
             <button class="btn-ghost" onclick="closeModal()">Cancel</button>
-            <button class="btn-primary" onclick="submitTransaction()">Save transaction</button>
-            </div>
+            <button class="btn-primary" onclick="submitTransaction(true)">Save payment</button>
         </div>
-        </div>`;
+        </div>
+        `;
+    }
 }
 
 // --- BOOT --- //
