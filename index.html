@@ -1,7 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
   <!-- TODO -->
-  <!-- Format payments differently -->
+  <!-- Display date on transactions -->
+  <!-- Add details button to transactions -->
 
 <!-- HEADER -->
 <head>
@@ -328,10 +329,12 @@ function simplifyDebts(balances) {
 // Render transactions as rows
 function renderTransactions() {
     const rows = state.transactions.map((e) => `
-        <div class="transaction-row">
+        <div class="transaction-row" ${e.split.length === 1 ? `style="background-color: #58855f; color: #FFFDF7"` : ``}>
         <div>
             <p class="transaction-desc">${esc(e.desc)}</p>
-            <div class="transaction-meta">${esc(e.paidBy)} paid · split ${e.split.length} ways</div>
+            <div class="transaction-meta" ${e.split.length === 1 ? 'style="color: #FFFDF7"' : ''}>
+                ${e.split.length === 1 ? `${esc(e.paidBy)} paid ${esc(e.split[0])}` : `${esc(e.paidBy)} paid · split ${e.split.length} ways`}
+            </div>
         </div>
         <div style="display:flex;align-items:center;gap:6px;">
             <span class="transaction-amount">${money(e.amount)}</span>
