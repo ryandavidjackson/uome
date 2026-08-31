@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
   <!-- TODO -->
-  <!-- Add 'paid' button to settle up -->
+  <!-- Format payments differently -->
 
 <!-- HEADER -->
 <head>
@@ -339,7 +339,13 @@ function renderTransactions() {
         </div>
         </div>`).join("");
     return `
-        <div class="section-title">Transactions <button class="add-btn" onclick="openAddModal()">+ Add</button></div>
+        <div class="section-title">
+            Transactions
+            <div style="display:flex; gap:8px;">
+            <button class="pay-btn" onclick="openAddModal(true)">Pay</button>
+            <button class="add-btn" onclick="openAddModal()">+ Add</button>
+            </div>
+        </div>
         ${state.transactions.length === 0 ? '<div class="empty">No transactions yet.</div>' : rows}
     `;
 }
@@ -359,7 +365,7 @@ function renderBalances() {
     }).join("");
     const settlements = simplifyDebts(balances);
     const settleRows = settlements.map((t) => `
-        <div class="settle-row">${esc(t.from)} <span class="arrow">→</span> ${esc(t.to)} <span class="settle-amt">${money(t.amount)}</span><button class="pay-btn" onclick="openAddModal(true,['${esc(t.from).replace(/'/g, "\\'")}', '${esc(t.to).replace(/'/g, "\\'")}'],${t.amount.toFixed(2)})">Pay up!</button></div>
+        <div class="settle-row">${esc(t.from)} <span class="arrow">→</span> ${esc(t.to)} <span class="settle-amt">${money(t.amount)}</span><button class="payup-btn" onclick="openAddModal(true,['${esc(t.from).replace(/'/g, "\\'")}', '${esc(t.to).replace(/'/g, "\\'")}'],${t.amount.toFixed(2)})">Pay up!</button></div>
     `).join("");
     return `
         <div class="section-title">Balances</div>
@@ -486,7 +492,7 @@ function renderModal(preserveInputs, isPayment=false) {
         document.getElementById("modalRoot").innerHTML = `
             <div class="modal-overlay" onclick="if(event.target===this) closeModal()">
             <div class="modal">
-                <h3>New transaction</h3>
+                <h3>Add a transaction</h3>
                 <label class="field">Description</label>
                 <input type="text" id="descInput" placeholder="e.g. Taxi home" value="${esc(desc)}" />
                 <label class="field">Amount</label>
@@ -524,8 +530,10 @@ function renderModal(preserveInputs, isPayment=false) {
             <select id="paidBySelect">${paidByOptions}</select>
             <label class="field">Paid to</label>
             <select id="paidToSelect">${paidToOptions}</select>
+            <div class="modal-actions">
             <button class="btn-ghost" onclick="closeModal()">Cancel</button>
             <button class="btn-primary" onclick="submitTransaction(true)">Save payment</button>
+            </div>
         </div>
         </div>
         `;
