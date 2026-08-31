@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
   <!-- TODO -->
+  <!-- Uneven transactions, e.g. meals -->
 
 <!-- HEADER -->
 <head>
@@ -126,7 +127,7 @@ let state = {
 }
 
 let currencies = {
-    name: ["GBP", "EUR"]
+    name: ["GBP", "EUR", "CHF"]
 }
 
 // --- FIREBASE CONNECTORS --- //
@@ -292,17 +293,19 @@ function computeBalances() {
     const bal = Object.fromEntries(state.friends.map((f) => [f, 0]));
     // Loop through transactions
     state.transactions.forEach((e) => {
-        // Calculate the share for each transactions, i.e. transaction / no. of sharers
-        const share = e.amount / e.split.length;
-        // Subtract the share from every sharers balance
-        e.split.forEach((p) => {
-            if (bal[p] !== undefined ) bal[p] -= share;
+        // Convert to pence to avoid floating point drift
+        const totalPence = Math.round(e.amount * 100);
+        const n = e.split.length;
+        const baseShare = Math.floor(totalPence / n);
+        const remainder = totalPence - (baseShare * n);
+
+        e.split.forEach((p, i) => {
+            const share = baseShare + (i < remainder ? 1 : 0)
+            if (bal[p] !== undefined) bal[p] -= share;
         });
-        // Add the total transaction to the payer
-        // The net effect is that they are owed everything but their own share
-        if (bal[e.paidBy] !== undefined ) bal[e.paidBy] += e.amount;
+        if (bal[e.paidBy] !== undefined) bal[e.paidBy] += totalPence;
     });
-    return bal
+    return Object.fromEntries(Object.entries(bal).map(([name, pence]) => [name, pence / 100]));
 }
 
 // Organise friends by debtors and creditors, with balances
