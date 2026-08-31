@@ -90,6 +90,7 @@ body { min-height: 100vh; background: var(--black); font-family: 'Inter', sans-s
 /* Format input boxes */
 label.field { display: block; font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: #6B6355; font-family: 'IBM Plex Mono', monospace; margin: 14px 0 6px; }
 label.desc { display: block; font-size: 11px; font-style: italic; letter-spacing: 1px; color: #6B6355; font-family: 'IBM Plex Mono', monospace; margin: 14px 0 6px; }
+label.detail { display: block; font-size: 14px; letter-spacing: 1px; color: #6B6355; font-family: 'Inter', sans-serif; margin: 14px 0 6px; }
 input[type=text], input[type=number], select { width: 100%; padding: 10px 12px; border: 1px solid var(--input-box); border-radius: 5px; background: var(--white); font-family: 'Inter', sans-serif; font-size: 14.5px; color: var(--black) }
 /* Format selection boxes e.g. for selecting who took part in a transaction */
 .chip-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }

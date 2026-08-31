@@ -1,8 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
   <!-- TODO -->
-  <!-- Display date on transactions -->
-  <!-- Add details button to transactions -->
 
 <!-- HEADER -->
 <head>
@@ -340,7 +338,7 @@ function renderTransactions() {
         <div class="transaction-row" ${e.split.length === 1 ? `style="background-color: #58855f; color: #FFFDF7"` : ``}>
         <div>
             <p class="transaction-desc">${esc(e.desc)}</p>
-            <div class="transaction-meta" ${e.split.length === 1 ? 'style="color: #FFFDF7"' : ''}>
+            <div class="transaction-meta" style="${e.split.length === 1 ? `color: #FFFDF7;` : ''}">
                 ${e.split.length === 1 ? `${esc(e.paidBy)} paid ${esc(e.split[0])}` : `${esc(e.paidBy)} paid · split ${e.split.length} ways`}
             </div>
         </div>
@@ -349,9 +347,9 @@ function renderTransactions() {
             <span class="transaction-amount">${money(e.amount)}</span>
             <button class="del-x" onclick="removeTransaction('${e.id}')" aria-label="Delete transaction" ${e.split.length === 1 ? `style="color: #FFFDF7"` : ``}>✕</button>
         </div>
-        <div class="transaction-meta" ${e.split.length === 1 ? 'style="color: #FFFDF7"' : ''}>
+        <button class="transaction-meta" onclick="openDetailsModal('${e.id}')" style="${e.split.length === 1 ? `color: #FFFDF7;` : ''} background: none; border: none; padding: 0; cursor: pointer; text-decoration-line: underline;">
             ${datestr(e.date)}
-        </div>
+        </button>
         </div>
         </div>`).join("");
     return `
@@ -451,18 +449,18 @@ async function openAddModal(isPayment = false, paymentAgents = [], recAmount = n
     } else {
         formState = { desc: "Payment", amount, paidBy: paymentAgents[0] || "", paidTo: paymentAgents[1] || "", split: [...state.friends], currency: "GBP", rate: null };
     }
-    renderModal(false,isPayment);
+    renderAddModal(false,isPayment);
 
     // fetch currency rates
     const currency = document.getElementById("currencySelect")?.value || "GBP";
     formState.rate = await getRate(currency, "GBP");
-    renderModal(true,isPayment);
+    renderAddModal(true,isPayment);
 }
 async function updateCurrency(isPayment = false) {
     const currency = document.getElementById("currencySelect").value;
     formState.currency = currency;
     formState.rate = null; // fetch whilst changing
-    renderModal(true,isPayment);
+    renderAddModal(true,isPayment);
 
     try {
         formState.rate = await getRate(currency, "GBP")
@@ -470,13 +468,13 @@ async function updateCurrency(isPayment = false) {
         console.error(err);
         formState.rate = "error";
     }
-    renderModal(true,isPayment);
+    renderAddModal(true,isPayment);
 }
 function closeModal() { document.getElementById("modalRoot").innerHTML = ""; }
 // Toggle splitters
 function toggleSplit(name) {
     formState.split = formState.split.includes(name) ? formState.split.filter((n) => n !== name) : [...formState.split, name];
-    renderModal(true);
+    renderAddModal(true);
 }
 // Get transaction input
 function submitTransaction(isPayment = false) {
@@ -497,7 +495,7 @@ function submitTransaction(isPayment = false) {
     closeModal();
     db ? pushState() : render();
 }
-function renderModal(preserveInputs, isPayment=false) {
+function renderAddModal(preserveInputs, isPayment=false) {
     const desc = preserveInputs ? document.getElementById("descInput").value : formState.desc;
     const amount = preserveInputs ? document.getElementById("amountInput").value : formState.amount;
     const currency = preserveInputs ? document.getElementById("currencySelect").value : formState.currency;
@@ -555,6 +553,41 @@ function renderModal(preserveInputs, isPayment=false) {
         </div>
         `;
     }
+}
+
+// Viewing transaction details
+async function openDetailsModal(transactionId) {
+    // Find transaction object by ID
+    const t = state.transactions.find((tx) => tx.id === transactionId);
+    if (!t) return;
+    renderDetailsModal(t);
+}
+function renderDetailsModal(t) {
+    document.getElementById("modalRoot").innerHTML = `
+    <div class="modal-overlay" onclick="if(event.target===this) closeModal()">
+        <div class="modal">
+            <h3>Transaction details</h3>
+            <label class="field">Description</label>
+            <label class="detail">${t.desc}</label>
+            <label class="field">Amount</label>
+            <label class="detail">${money(t.amount)}</label>
+            <label class="field">Currency</label>
+            <label class="detail">${t.currency}</label>
+            <label class="field">Conversion rate</label>
+            <label class="detail">${t.rate}</label>
+            <label class="field">Amount / conversion rate</label>
+            <label class="detail">${(t.amount/t.rate).toFixed(2)}</label>
+            <label class="field">Paid by</label>
+            <label class="detail">${t.paidBy}</label>
+            <label class="field">Split with</label>
+            <label class="detail">${t.split}</label>
+            <label class="field">Date/time</label>
+            <label class="detail">${datestr(t.date)}</label>
+            <label class="field">ID</label>
+            <label class="detail">${t.id}</label>
+        </div>
+    </div>
+    `;
 }
 
 // --- BOOT --- //
