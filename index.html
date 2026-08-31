@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
   <!-- TODO -->
+  <!-- Uneven transactions, e.g. meals -->
 
 <!-- HEADER -->
 <head>
@@ -126,7 +127,7 @@ let state = {
 }
 
 let currencies = {
-    name: ["GBP", "EUR"]
+    name: ["GBP", "EUR", "CHF"]
 }
 
 // --- FIREBASE CONNECTORS --- //
@@ -288,21 +289,28 @@ async function getRate(from, to) {
 }
 
 function computeBalances() {
-    // Initialise a lookup with friend name and balance
     const bal = Object.fromEntries(state.friends.map((f) => [f, 0]));
-    // Loop through transactions
     state.transactions.forEach((e) => {
-        // Calculate the share for each transactions, i.e. transaction / no. of sharers
-        const share = e.amount / e.split.length;
-        // Subtract the share from every sharers balance
-        e.split.forEach((p) => {
-            if (bal[p] !== undefined ) bal[p] -= share;
-        });
-        // Add the total transaction to the payer
-        // The net effect is that they are owed everything but their own share
-        if (bal[e.paidBy] !== undefined ) bal[e.paidBy] += e.amount;
+        if (e.shares) {
+            // Uneven split: use explicit per-person amounts (already in pounds)
+            Object.entries(e.shares).forEach(([p, amt]) => {
+                if (bal[p] !== undefined) bal[p] -= Math.round(amt * 100);
+            });
+            if (bal[e.paidBy] !== undefined) bal[e.paidBy] += Math.round(e.amount * 100);
+        } else {
+            // Even split (existing behaviour): pence-based, remainder-fair
+            const totalPence = Math.round(e.amount * 100);
+            const n = e.split.length;
+            const baseShare = Math.floor(totalPence / n);
+            const remainder = totalPence - baseShare * n;
+            e.split.forEach((p, i) => {
+                const share = baseShare + (i < remainder ? 1 : 0);
+                if (bal[p] !== undefined) bal[p] -= share;
+            });
+            if (bal[e.paidBy] !== undefined) bal[e.paidBy] += totalPence;
+        }
     });
-    return bal
+    return Object.fromEntries(Object.entries(bal).map(([name, pence]) => [name, pence / 100]));
 }
 
 // Organise friends by debtors and creditors, with balances
@@ -339,7 +347,9 @@ function renderTransactions() {
         <div>
             <p class="transaction-desc">${esc(e.desc)}</p>
             <div class="transaction-meta" style="${e.split.length === 1 ? `color: #FFFDF7;` : ''}">
-                ${e.split.length === 1 ? `${esc(e.paidBy)} paid ${esc(e.split[0])}` : `${esc(e.paidBy)} paid · split ${e.split.length} ways`}
+                ${(e.split.length === 1) ? `${esc(e.paidBy)} paid ${esc(e.split[0])}` : 
+                (e.splitMode === "amount") ? `${esc(e.paidBy)} paid · split unevenly ${Object.values(e.shares).filter(v => v > 0).length} ways` :
+                `${esc(e.paidBy)} paid · split ${e.split.length} ways`}
             </div>
         </div>
         <div style="text-align:right;">
@@ -441,13 +451,13 @@ function removeFriend(name) {
 }
 
 // Adding transactions
-let formState = { desc: "", amount: "", paidBy: "", split: [], currency: "", rate: null };
+let formState = { desc: "", amount: "", paidBy: "", split: [], currency: "", rate: null, splitMode: "even" };
 async function openAddModal(isPayment = false, paymentAgents = [], recAmount = null) {
     amount = recAmount ? recAmount : ""
     if (paymentAgents.length === 0) {
-        formState = { desc: "", amount, paidBy: state.friends[0] || "", split: [...state.friends], currency: "GBP", rate: null };
+        formState = { desc: "", amount, paidBy: state.friends[0] || "", split: [...state.friends], currency: "GBP", rate: null, splitMode: "even" };
     } else {
-        formState = { desc: "Payment", amount, paidBy: paymentAgents[0] || "", paidTo: paymentAgents[1] || "", split: [...state.friends], currency: "GBP", rate: null };
+        formState = { desc: "Payment", amount, paidBy: paymentAgents[0] || "", paidTo: paymentAgents[1] || "", split: [...state.friends], splitMode: "even", currency: "GBP", rate: null };
     }
     renderAddModal(false,isPayment);
 
@@ -456,6 +466,7 @@ async function openAddModal(isPayment = false, paymentAgents = [], recAmount = n
     formState.rate = await getRate(currency, "GBP");
     renderAddModal(true,isPayment);
 }
+// Update currency conversion rate
 async function updateCurrency(isPayment = false) {
     const currency = document.getElementById("currencySelect").value;
     formState.currency = currency;
@@ -470,6 +481,26 @@ async function updateCurrency(isPayment = false) {
     }
     renderAddModal(true,isPayment);
 }
+// Toggle between splitting evenly and by amount
+function setSplitMode(mode) {
+    formState.splitMode = mode;
+    if (mode === "amount" && !formState.shares) {
+        formState.shares = {};
+    }
+    renderAddModal(true, false);
+}
+// Track shares in amount splits, ensuring consistency with total
+function updateShare(name, value) {
+    if (!formState.shares) formState.shares = {};
+    formState.shares[name] = parseFloat(value) || 0;
+    const total = Object.values(formState.shares).reduce((a, b) => a + b, 0);
+    const amountEntered = parseFloat(document.getElementById("amountInput").value) || 0;
+    const totalEl = document.getElementById("shareTotal");
+    if (totalEl) {
+        totalEl.textContent = `Assigned £${total.toFixed(2)} of £${amountEntered.toFixed(2)}`;
+        totalEl.style.color = Math.abs(total - amountEntered) < 0.01 ? "var(--black)" : "var(--red)";
+    }
+}
 function closeModal() { document.getElementById("modalRoot").innerHTML = ""; }
 // Toggle splitters
 function toggleSplit(name) {
@@ -479,22 +510,38 @@ function toggleSplit(name) {
 // Get transaction input
 function submitTransaction(isPayment = false) {
     const desc = document.getElementById("descInput").value.trim();
-    const date = new Date()
     const amount = parseFloat(document.getElementById("amountInput").value);
     const currency = document.getElementById("currencySelect").value.trim();
     const paidBy = document.getElementById("paidBySelect").value;
     const rate = formState.rate;
-    if (!isPayment) {
-        split = formState.split;
-    } else {
+
+    let split, shares = null;
+    if (isPayment) {
         split = [document.getElementById("paidToSelect").value];
+    } else if (formState.splitMode === "amount") {
+        shares = formState.shares;
+        split = Object.keys(shares || {});
+        const total = Object.values(shares || {}).reduce((a, b) => a + b, 0);
+        if (Math.abs(total - amount) > 0.01) {
+            alert("Shares don't add up to the total amount.");
+            return;
+        }
+    } else {
+        split = formState.split;
     }
-    if (!desc || !amount || amount <= 0 || (split.length === 0) || (!formState.rate)) return;
-    gbp_amount = amount * formState.rate;
-    state.transactions.unshift({ id: uid(), date, desc, amount: gbp_amount, paidBy, split, currency, rate });
+
+    if (!desc || !amount || amount <= 0 || split.length === 0 || !formState.rate) return;
+
+    const gbpAmount = amount * formState.rate;
+    const gbpShares = shares
+        ? Object.fromEntries(Object.entries(shares).map(([n, v]) => [n, v * formState.rate]))
+        : null;
+
+    state.transactions.unshift({ id: uid(), desc, amount: gbpAmount, paidBy, split, shares: gbpShares, currency, rate, date: new Date().toISOString(), splitMode: formState.splitMode });
     closeModal();
     db ? pushState() : render();
 }
+// Render the add/pay transaction models
 function renderAddModal(preserveInputs, isPayment=false) {
     const desc = preserveInputs ? document.getElementById("descInput").value : formState.desc;
     const amount = preserveInputs ? document.getElementById("amountInput").value : formState.amount;
@@ -517,8 +564,25 @@ function renderAddModal(preserveInputs, isPayment=false) {
                 <label class="desc">Conversion rate: £${formState.rate ?? "fetching..."}</label>
                 <label class="field">Paid by</label>
                 <select id="paidBySelect">${paidByOptions}</select>
-                <label class="field">Split among</label>
-                <div class="chip-row">${chips}</div>
+                
+                <label class="field">Split</label>
+                <div class="chip-row">
+                    <button type="button" class="chip ${formState.splitMode === 'even' ? 'on' : ''}" onclick="setSplitMode('even')">Evenly</button>
+                    <button type="button" class="chip ${formState.splitMode === 'amount' ? 'on' : ''}" onclick="setSplitMode('amount')">By amount</button>
+                </div>
+                ${formState.splitMode === 'even' ? `
+                    <label class="field">Split among</label>
+                    <div class="chip-row">${chips}</div>
+                ` : `
+                    <label class="field">Amount owed</label>
+                    ${state.friends.map((f) => `
+                        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+                            <label class="field" style="flex:1;">${esc(f)}</label>
+                            <input type="number" class="share-input" placeholder="0.00" style="width:90px;" value="${formState.shares?.[f] ?? ''}" oninput="updateShare('${esc(f)}', this.value)" />
+                        </div>
+                    `).join("")}
+                    <div class="expense-meta" id="shareTotal"></div>
+                `}                
                 <div class="modal-actions">
                 <button class="btn-ghost" onclick="closeModal()">Cancel</button>
                 <button class="btn-primary" onclick="submitTransaction()">Save transaction</button>
@@ -579,8 +643,13 @@ function renderDetailsModal(t) {
             <label class="detail">${(t.amount/t.rate).toFixed(2)}</label>
             <label class="field">Paid by</label>
             <label class="detail">${t.paidBy}</label>
-            <label class="field">Split with</label>
-            <label class="detail">${t.split}</label>
+            ${t.splitMode === "even" ? `
+                <label class="field">Split with</label>
+                <label class="detail">${t.split}</label>
+            ` : `
+                <label class="field">Uneven split</label>
+                <label class="detail">${JSON.stringify(t.shares)}</label>
+            `}
             <label class="field">Date/time</label>
             <label class="detail">${datestr(t.date)}</label>
             <label class="field">ID</label>
