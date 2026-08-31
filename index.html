@@ -49,7 +49,7 @@
             <!-- branding -->
             <div>
             <p class="brand">uome</p>
-            <div class="brand-sub" id="brandSub">shared transactions</div>
+            <div class="brand-sub" id="brandSub">transaction tracker</div>
             </div>
             <!-- sync status -->
             <button class="sync-pill" id ="syncPill" onclick="openGroupInfo()">not synced</button>
@@ -408,7 +408,7 @@ function renderFriends() {
 
 // Render app content based on tab state
 function render() {
-    document.getElementById("brandSub").textContent = `shared transactions · ${state.friends.length} friends`;
+    document.getElementById("brandSub").textContent = `transaction tracker · ${state.friends.length} friends`;
     const content = document.getElementById("content");
     if (state.tab === "transactions") content.innerHTML = renderTransactions();
     else if (state.tab === "balances") content.innerHTML = renderBalances();
